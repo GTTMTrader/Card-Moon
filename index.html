@@ -392,14 +392,14 @@ let transactions = loadTx();
 
 function populateSelects(){
   const cardSel = document.getElementById('inCard');
-  cardSel.innerHTML = Object.entries(CARD_DB).map(([id,c]) => `<option value="${id}">${c.name}${c.discontinued ? ' (단종/중지)' : ''}</option>`).join('');
+  cardSel.innerHTML = Object.entries(CARD_DB).map(([id,c]) => `<option value="${id}">${c.name}</option>`).join('');
   const catSel = document.getElementById('inCategory');
   catSel.innerHTML = `<option value="">자동감지 안됨 - 직접 선택</option>` + CATEGORIES.map(c => `<option value="${c}">${decorateCategory(c)}</option>`).join('');
   document.getElementById('inDate').valueAsDate = new Date();
 
   const settingsList = document.getElementById('cardListSettings');
   settingsList.innerHTML = Object.entries(CARD_DB).map(([id,c]) => `
-    <div class="kv"><span class="k">${c.name}${c.discontinued ? '<span class="discontinued-badge">단종/중지</span>' : ''}</span><span>연회비 ${c.annualFee.toLocaleString()}원</span></div>
+    <div class="kv"><span class="k">${c.name}</span><span>연회비 ${c.annualFee.toLocaleString()}원</span></div>
   `).join('');
 
   const batchCardSel = document.getElementById('batchCard');
@@ -635,7 +635,7 @@ function renderEfficiency(){
     const ratio = c.annualFee ? (benefit / c.annualFee * 100) : null;
     const color = ratio === null ? 'var(--sub)' : ratio >= 100 ? 'var(--good)' : ratio >= 50 ? 'var(--warn)' : 'var(--bad)';
     return `<div class="stat-row">
-      <span>${c.name}${c.discontinued ? '<span class="discontinued-badge">단종/중지</span>' : ''} <span style="color:var(--sub); font-size:11px;">(연회비 ${fmt(c.annualFee)})</span></span>
+      <span>${c.name} <span style="color:var(--sub); font-size:11px;">(연회비 ${fmt(c.annualFee)})</span></span>
       <span class="n" style="color:${color}">${ratio===null ? '연회비없음' : ratio.toFixed(0)+'%'}</span>
     </div>`;
   }).join('') + `<div class="note">단종/발급중지 카드는 효율이 낮게 나와도 재발급이 안 되니 해지 판단은 신중하게 - 추천 탭 참고.</div>`;
