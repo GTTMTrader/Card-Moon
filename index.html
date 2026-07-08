@@ -223,16 +223,33 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script>
 /* ================= 여자친구 카드 혜택 DB (card_db_yeojin.json 기반, 근사치 단순화) ================= */
+// 카테고리 체계: 가계부 앱 표준 대분류 18종 + 이모지
+const CATEGORY_EMOJI = {
+  "식비": "🍽️", "카페/간식": "☕", "술/유흥": "🍺", "생활": "🛒",
+  "온라인쇼핑": "📦", "패션/쇼핑": "👗", "뷰티/미용": "💄", "교통": "🚇",
+  "자동차": "🚗", "주거/통신": "🏠", "의료/건강": "🏥", "금융": "💰",
+  "문화/여가": "🎟️", "여행/숙박": "✈️", "교육/학습": "📚", "자녀/육아": "👶",
+  "반려동물": "🐾", "경조/선물": "🎁"
+};
+function decorateCategory(cat){
+  const e = CATEGORY_EMOJI[cat];
+  return e ? `${e}${cat}${e}` : cat;
+}
+
+const ALL_CATS = Object.keys(CATEGORY_EMOJI);
+function defaultRates(base){
+  const r = {};
+  ALL_CATS.forEach(c => r[c] = base);
+  return r;
+}
+
 const CARD_DB = {
   naver_hyundai: {
     name: "네이버 현대카드",
     annualFee: 10000,
     minPerformance: 300000,
     discontinued: true,
-    rates: {
-      "네이버쇼핑": 0.09, "온라인쇼핑": 0, "백화점아울렛": 0, "마트": 0, "주유": 0,
-      "해외여행": 0, "디지털콘텐츠": 0, "커피": 0, "택시": 0, "기타": 0.01
-    }
+    rates: { ...defaultRates(0.01), "온라인쇼핑": 0.09 }
   },
   hana_jade_classic: {
     name: "하나 제이드 클래식",
@@ -240,8 +257,10 @@ const CARD_DB = {
     minPerformance: 500000,
     discontinued: false,
     rates: {
-      "네이버쇼핑": 0.012, "온라인쇼핑": 0.012, "백화점아울렛": 0.012, "마트": 0.012, "주유": 0.012,
-      "해외여행": 0.015, "디지털콘텐츠": 0.005, "커피": 0.005, "택시": 0.005, "기타": 0.01
+      ...defaultRates(0.01),
+      "여행/숙박": 0.015,
+      "온라인쇼핑": 0.012, "패션/쇼핑": 0.012, "생활": 0.012, "자동차": 0.012,
+      "문화/여가": 0.005, "카페/간식": 0.005, "교통": 0.005
     }
   },
   hana_naverpay_check: {
@@ -249,26 +268,33 @@ const CARD_DB = {
     annualFee: 0,
     minPerformance: 250000,
     discontinued: true,
-    rates: {
-      "네이버쇼핑": 0.012, "온라인쇼핑": 0.012, "백화점아울렛": 0.012, "마트": 0.012, "주유": 0.012,
-      "해외여행": 0.012, "디지털콘텐츠": 0.012, "커피": 0.012, "택시": 0.012, "기타": 0.012
-    }
+    rates: defaultRates(0.012)
   }
 };
 
-const CATEGORIES = ["네이버쇼핑","온라인쇼핑","백화점아울렛","마트","주유","해외여행","디지털콘텐츠","커피","택시","기타"];
+const CATEGORIES = ALL_CATS;
 
 const KEYWORD_MAP = [
-  [["네이버쇼핑","스마트스토어"], "네이버쇼핑"],
-  [["쿠팡","11번가","위메프","티몬","지마켓","옥션"], "온라인쇼핑"],
-  [["백화점","아울렛","신세계","롯데백화점","현대백화점"], "백화점아울렛"],
-  [["이마트","홈플러스","마트","코스트코"], "마트"],
-  [["주유","오일","gs칼텍스","sk에너지","현대오일뱅크","s-oil"], "주유"],
-  [["항공","호텔","면세","여행","트립닷컴","아고다","booking"], "해외여행"],
-  [["넷플릭스","디즈니","웨이브","티빙","멜론","지니","flo","spotify","유튜브"], "디지털콘텐츠"],
-  [["스타벅스","커피","카페","투썸","이디야"], "커피"],
-  [["택시","카카오t","우버","kakao t"], "택시"],
+  [["배민","요기요","쿠팡이츠","배달의민족","식당","맛집"], "식비"],
+  [["스타벅스","커피","카페","투썸","이디야","배스킨"], "카페/간식"],
+  [["술집","호프","포차","bar","이자카야","와인바"], "술/유흥"],
+  [["gs25","cu","세븐일레븐","이마트24","편의점","이마트","홈플러스","마트","코스트코"], "생활"],
+  [["네이버쇼핑","스마트스토어","쿠팡","11번가","위메프","티몬","지마켓","옥션"], "온라인쇼핑"],
+  [["백화점","아울렛","신세계","롯데백화점","현대백화점","무신사","zara","유니클로"], "패션/쇼핑"],
+  [["올리브영","미용실","네일","피부과","에스테틱"], "뷰티/미용"],
+  [["택시","카카오t","우버","kakao t","버스","지하철"], "교통"],
+  [["주유","오일","gs칼텍스","sk에너지","현대오일뱅크","s-oil","세차","정비"], "자동차"],
+  [["통신","skt","kt","lg u+","도시가스","전기요금","관리비","월세"], "주거/통신"],
+  [["약국","병원","의원","한의원","치과"], "의료/건강"],
+  [["보험","증권","은행수수료"], "금융"],
+  [["넷플릭스","디즈니","웨이브","티빙","멜론","지니","flo","spotify","유튜브","영화","cgv","메가박스","롯데시네마"], "문화/여가"],
+  [["항공","호텔","면세","여행","트립닷컴","아고다","booking"], "여행/숙박"],
+  [["학원","교재","등록금","강의"], "교육/학습"],
+  [["어린이집","유치원","장난감","기저귀"], "자녀/육아"],
+  [["동물병원","펫샵","사료"], "반려동물"],
+  [["축의금","조의금","선물","화환"], "경조/선물"],
 ];
+
 
 function guessCategory(merchant){
   const m = (merchant||"").toLowerCase();
@@ -368,7 +394,7 @@ function populateSelects(){
   const cardSel = document.getElementById('inCard');
   cardSel.innerHTML = Object.entries(CARD_DB).map(([id,c]) => `<option value="${id}">${c.name}${c.discontinued ? ' (단종/중지)' : ''}</option>`).join('');
   const catSel = document.getElementById('inCategory');
-  catSel.innerHTML = `<option value="">자동감지 안됨 - 직접 선택</option>` + CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+  catSel.innerHTML = `<option value="">자동감지 안됨 - 직접 선택</option>` + CATEGORIES.map(c => `<option value="${c}">${decorateCategory(c)}</option>`).join('');
   document.getElementById('inDate').valueAsDate = new Date();
 
   const settingsList = document.getElementById('cardListSettings');
@@ -393,7 +419,7 @@ function renderBatchPreview(){
       <input type="text" value="${r.merchant}" style="flex:1 1 55%; margin-bottom:6px;" onchange="batchRows[${idx}].merchant=this.value">
       <input type="number" value="${r.amount}" style="flex:1 1 40%; margin-bottom:6px;" onchange="batchRows[${idx}].amount=Number(this.value)">
       <select style="flex:1 1 100%;" onchange="batchRows[${idx}].category=this.value">
-        ${CATEGORIES.map(c=>`<option value="${c}" ${c===r.category?'selected':''}>${c}</option>`).join('')}
+        ${CATEGORIES.map(c=>`<option value="${c}" ${c===r.category?'selected':''}>${decorateCategory(c)}</option>`).join('')}
       </select>
     </div>
   `).join('');
@@ -531,7 +557,7 @@ function renderTxList(){
     return `
       <div class="tx">
         <div class="tx-left">
-          <div class="tx-merchant">${t.merchant || '(가맹점 미입력)'} <span class="card-badge">${t.category}</span></div>
+          <div class="tx-merchant">${t.merchant || '(가맹점 미입력)'} <span class="card-badge">${decorateCategory(t.category)}</span></div>
           <div class="tx-meta">${t.date} · ${CARD_DB[t.cardId].name}</div>
           ${isBest
             ? `<span class="flag good">✓ 최적 카드 사용</span>`
@@ -569,7 +595,7 @@ function renderCatStats(){
   el.innerHTML = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat,sum])=>{
     const pct = total ? (sum/total*100) : 0;
     return `<div class="stat-row" style="display:block;">
-      <div style="display:flex; justify-content:space-between;"><span>${cat}</span><span class="n">${fmt(sum)}원</span></div>
+      <div style="display:flex; justify-content:space-between;"><span>${decorateCategory(cat)}</span><span class="n">${fmt(sum)}원</span></div>
       <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
     </div>`;
   }).join('');
