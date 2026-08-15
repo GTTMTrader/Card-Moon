@@ -102,6 +102,15 @@
   .stat-row:last-child{border-bottom:none;}
   .stat-row .n{font-family:var(--mono);font-weight:700;}
 
+  .sr-list{margin-top:8px;}
+  .sr-item{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:11px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;
+    background:var(--panel2);}
+  .sr-name{font-size:14px;font-weight:600;}
+  .sr-cat{font-size:11px;color:var(--sub);margin-top:3px;}
+  .sr-go{flex:0 0 auto;background:var(--accent);border:none;border-radius:8px;
+    padding:7px 12px;font-size:12px;font-weight:700;font-family:inherit;}
+  .sr-none{font-size:12px;color:var(--sub);padding:10px 2px;}
   .footer-nav{position:fixed;bottom:0;left:0;right:0;background:var(--panel);
     border-top:1px solid var(--line);display:flex;
     padding:8px 8px calc(env(safe-area-inset-bottom) + 8px);gap:4px;z-index:10;}
@@ -143,6 +152,9 @@
   <div class="view active" id="view-reco">
     <div class="card">
       <h2>결제 전 카드 추천</h2>
+      <label>가맹점 검색</label>
+      <input type="text" id="rcSearch" placeholder="예: 모두투어, 넷플릭스, 쿠팡..." autocomplete="off">
+      <div id="rcSearchResult"></div>
       <label>어디에 쓰실 건가요?</label>
       <select id="rcCategory"></select>
       <label>가맹점 (선택하시면 더 정확합니다)</label>
@@ -915,6 +927,93 @@ function refreshMerchantSelect(){
 }
 document.getElementById('rcCategory').addEventListener('change', refreshMerchantSelect);
 refreshMerchantSelect();
+
+/* ===================== 가맹점 검색 ===================== */
+// 검색용 평탄화 인덱스 (가맹점명 -> 소속 카테고리)
+const MERCHANT_INDEX = [];
+Object.entries(MERCHANTS).forEach(([cat, list])=>{
+  list.forEach(m=>MERCHANT_INDEX.push({merchant:m, category:cat}));
+});
+// 별칭: 검색어가 실제 항목명과 달라도 찾아지도록
+const MERCHANT_ALIAS = {
+  "배민":"배달의민족", "요기":"요기요", "쿠팡이츠":"쿠팡이츠",
+  "넷플":"넷플릭스", "넷플릭스":"넷플릭스", "유튜브":"유튜브 프리미엄", "유툽":"유튜브 프리미엄",
+  "스벅":"스타벅스", "별다방":"스타벅스",
+  "지마켓":"G마켓", "gmarket":"G마켓", "옥션":"옥션",
+  "카카오택시":"카카오T", "카톡택시":"카카오T", "카카오t":"카카오T", "택시":"카카오T",
+  "cu":"편의점", "gs25":"편의점", "세븐일레븐":"편의점", "이마트24":"편의점",
+  "이마트":"대형마트", "홈플러스":"대형마트", "롯데마트":"대형마트", "코스트코":"대형마트",
+  "주유":"주유소", "기름":"주유소", "gs칼텍스":"주유소", "sk에너지":"주유소",
+  "야놀자":"야놀자/여기어때", "여기어때":"야놀자/여기어때",
+  "대한항공":"항공사 직접결제", "아시아나":"항공사 직접결제", "제주항공":"항공사 직접결제",
+  "cgv":"영화관", "메가박스":"영화관", "롯데시네마":"영화관",
+  "올리브영":"올리브영", "다이소":"다이소",
+  "ssg":"SSG닷컴", "쓱":"SSG닷컴",
+  "11st":"11번가"
+};
+
+function searchMerchants(q){
+  const query = q.trim().toLowerCase();
+  if(!query) return [];
+  const hits = new Map();
+
+  // 1) 가맹점명 직접 매칭
+  MERCHANT_INDEX.forEach(it=>{
+    if(it.merchant.toLowerCase().includes(query)){
+      hits.set(it.merchant + '|' + it.category, it);
+    }
+  });
+  // 2) 별칭 매칭
+  Object.entries(MERCHANT_ALIAS).forEach(([alias, target])=>{
+    if(alias.includes(query) || query.includes(alias)){
+      MERCHANT_INDEX.filter(it=>it.merchant===target).forEach(it=>{
+        hits.set(it.merchant + '|' + it.category, it);
+      });
+    }
+  });
+  // 3) 카테고리명 매칭 (가맹점 지정 없이 카테고리만 잡고 싶을 때)
+  CATEGORIES.forEach(cat=>{
+    if(cat.toLowerCase().includes(query)){
+      hits.set('|' + cat, {merchant:'', category:cat});
+    }
+  });
+  return Array.from(hits.values()).slice(0, 8);
+}
+
+function renderSearchResult(){
+  const q = document.getElementById('rcSearch').value;
+  const box = document.getElementById('rcSearchResult');
+  if(!q.trim()){ box.innerHTML=''; return; }
+  const res = searchMerchants(q);
+  if(!res.length){
+    box.innerHTML = `<div class="sr-none">일치하는 가맹점이 없습니다. 아래에서 카테고리를 직접 골라 주세요.</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="sr-list">` + res.map((r,i)=>`
+    <div class="sr-item">
+      <div>
+        <div class="sr-name">${r.merchant || deco(r.category)}</div>
+        <div class="sr-cat">${r.merchant ? deco(r.category) : '카테고리 전체'}</div>
+      </div>
+      <button class="sr-go" onclick="pickSearch(${i})">선택</button>
+    </div>`).join('') + `</div>`;
+  window.__searchRes = res;
+}
+
+function pickSearch(idx){
+  const r = (window.__searchRes||[])[idx];
+  if(!r) return;
+  document.getElementById('rcCategory').value = r.category;
+  refreshMerchantSelect();
+  if(r.merchant) document.getElementById('rcMerchant').value = r.merchant;
+  document.getElementById('rcSearch').value = '';
+  document.getElementById('rcSearchResult').innerHTML = '';
+  showToast(r.merchant ? `${r.merchant} 선택됨` : `${r.category} 선택됨`);
+  document.getElementById('rcAmount').focus();
+}
+window.pickSearch = pickSearch;
+document.getElementById('rcSearch').addEventListener('input', renderSearchResult);
+
 document.getElementById('mlCategory').innerHTML =
   CATEGORIES.map(c=>`<option value="${c}">${deco(c)}</option>`).join('');
 document.getElementById('mlDate').valueAsDate = new Date();
