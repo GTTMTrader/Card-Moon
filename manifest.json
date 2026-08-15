@@ -1,6 +1,6 @@
 {
-  "name": "카드 리포트",
-  "short_name": "카드 리포트",
+  "name": "문카드",
+  "short_name": "문카드",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0e0b16",
