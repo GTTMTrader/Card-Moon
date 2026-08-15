@@ -145,6 +145,8 @@
       <h2>결제 전 카드 추천</h2>
       <label>어디에 쓰실 건가요?</label>
       <select id="rcCategory"></select>
+      <label>가맹점 (선택하시면 더 정확합니다)</label>
+      <select id="rcMerchant"></select>
       <label>금액</label>
       <input type="number" id="rcAmount" inputmode="numeric" placeholder="0">
       <label>결제 방식</label>
@@ -262,6 +264,31 @@ const CATEGORY_EMOJI = {
 const CATEGORIES = Object.keys(CATEGORY_EMOJI);
 function deco(c){ const e=CATEGORY_EMOJI[c]; return e?`${e}${c}${e}`:c; }
 
+/* ===================== 가맹점(브랜드) 목록 =====================
+   카테고리 안에서 특정 브랜드만 혜택이 다른 경우를 위한 레이어.
+   카드별 merchantRates에 브랜드명으로 요율을 지정하면 카테고리 요율보다 우선 적용됨.
+================================================================ */
+const MERCHANTS = {
+  "식비": ["배달의민족","요기요","쿠팡이츠","일반 음식점"],
+  "카페/간식": ["스타벅스","그 외 카페"],
+  "술/유흥": [],
+  "생활": ["편의점","대형마트","세탁소","다이소"],
+  "온라인쇼핑": ["쿠팡","G마켓","옥션","11번가","위메프","네이버쇼핑","SSG닷컴","그 외 온라인몰"],
+  "패션/쇼핑": ["백화점","아울렛"],
+  "뷰티/미용": ["올리브영","미용실"],
+  "교통": ["카카오T","우티","버스/지하철"],
+  "자동차": ["주유소","전기차충전","세차/정비"],
+  "주거/통신": ["통신비","도시가스","전기요금","아파트관리비"],
+  "의료/건강": ["병원","약국","치과","한의원","동물병원"],
+  "금융": [],
+  "문화/여가": ["넷플릭스","유튜브 프리미엄","영화관","공연/전시"],
+  "여행/숙박": ["하나투어","모두투어","항공사 직접결제","면세점","호텔 직접결제","야놀자/여기어때"],
+  "교육/학습": [],
+  "자녀/육아": [],
+  "반려동물": ["동물병원","펫샵"],
+  "경조/선물": []
+};
+
 function blankRates(v){ const r={}; CATEGORIES.forEach(c=>r[c]=v); return r; }
 
 /* ===================== 기본 카드 DB =====================
@@ -276,14 +303,49 @@ function blankRates(v){ const r={}; CATEGORIES.forEach(c=>r[c]=v); return r; }
 ====================================================== */
 const DEFAULT_CARDS = [
   {
-    id:"naver_hyundai", name:"네이버 현대카드", annualFee:10000, minPerf:300000,
+    id:"naver_hyundai",
+    merchantRates:{
+      "네이버쇼핑":5,
+      "쿠팡":1, "G마켓":1, "옥션":1, "11번가":1, "위메프":1, "SSG닷컴":1, "그 외 온라인몰":1
+    },
+    merchantCaps:{ "네이버쇼핑":10000 },
+    merchantNotes:{
+      "네이버쇼핑":"결제금액 20만원까지 5% 적립, 월 최대 1만 포인트입니다"
+    }, name:"네이버 현대카드", annualFee:10000, minPerf:300000,
     noInstallment:true, monthCap:0,
     rates:{...blankRates(1), "온라인쇼핑":9},
     perCaps:blankRates(0),
     memo:"네이버쇼핑 최대 8.6~10% 네이버페이 포인트 적립, 그 외 1%. 단종된 카드라 해지하면 재발급 불가 — 혜택 대비 효율이 낮게 나와도 해지는 신중하게."
   },
   {
-    id:"hana_jade_classic", name:"하나 제이드 클래식", annualFee:120000, minPerf:500000,
+    id:"hana_jade_classic",
+    merchantRates:{
+      "넷플릭스":50, "유튜브 프리미엄":50,
+      "스타벅스":50,
+      "카카오T":50, "우티":50,
+      "하나투어":1.5, "모두투어":1, "항공사 직접결제":1.5, "면세점":1.5, "호텔 직접결제":1.5,
+      "야놀자/여기어때":1,
+      "백화점":1.2, "아울렛":1.2, "대형마트":1.2, "주유소":1.2,
+      "네이버쇼핑":1.2, "쿠팡":1.2, "G마켓":1.2, "11번가":1.2
+    },
+    merchantCaps:{
+      "넷플릭스":10000, "유튜브 프리미엄":10000,
+      "스타벅스":5000, "카카오T":5000, "우티":5000
+    },
+    merchantNotes:{
+      "넷플릭스":"디지털 콘텐츠 50% 적립, 월 최대 1만 하나머니입니다",
+      "유튜브 프리미엄":"디지털 콘텐츠 50% 적립, 월 최대 1만 하나머니입니다",
+      "스타벅스":"커피 50% 적립, 월 최대 5천 하나머니입니다",
+      "카카오T":"택시 50% 적립(공식 앱 결제 한정), 월 최대 5천 하나머니입니다",
+      "우티":"택시 50% 적립(공식 앱 결제 한정), 월 최대 5천 하나머니입니다",
+      "하나투어":"하나투어는 예외적으로 오프라인 결제도 적립 대상에 포함됩니다",
+      "모두투어":"여행사 결제는 특별적립(1.5%) 대상에서 제외되어 기본적립 1%만 적용됩니다",
+      "항공사 직접결제":"공식 홈페이지·앱·오프라인 매장 결제만 대상이며, 여행사·구매대행 경유 시 제외됩니다",
+      "야놀자/여기어때":"여행 특별적립은 공식 홈페이지 결제 기준이라 숙박 플랫폼은 기본적립만 적용될 수 있습니다",
+      "백화점":"오프라인 결제만 대상이며 상설·임대 매장은 제외됩니다",
+      "아울렛":"오프라인 결제만 대상이며 상설·임대 매장은 제외됩니다",
+      "대형마트":"오프라인 결제만 대상이며 롯데마트맥스(창고형)는 제외됩니다"
+    }, name:"하나 제이드 클래식", annualFee:120000, minPerf:500000,
     noInstallment:true, monthCap:100000,
     rates:{...blankRates(1), "여행/숙박":1.5,
       "온라인쇼핑":1.2, "패션/쇼핑":1.2, "생활":1.2, "자동차":1.2,
@@ -299,7 +361,8 @@ const DEFAULT_CARDS = [
     memo:"전월실적 없음. 전 가맹점 대상, 건당 금액 클수록 할인율 상승 (10만↑1%, 30만↑1.5%, 50만↑2%). 월 통합한도 10만원. 큰 금액 결제에 강함."
   },
   {
-    id:"hana_naverpay_check", name:"하나 네이버페이 체크카드", annualFee:0, minPerf:250000,
+    id:"hana_naverpay_check",
+    merchantRates:{}, name:"하나 네이버페이 체크카드", annualFee:0, minPerf:250000,
     noInstallment:true, monthCap:10000,
     rates:blankRates(1.2), perCaps:blankRates(0),
     memo:"전 영역 1.2% 네이버페이 포인트 (하나은행 계좌 연결 기준, 타행이면 0.6%). 월 한도 1만원. 신규발급 중지 카드지만 연회비 0원이라 유지 부담 없음."
@@ -334,7 +397,7 @@ function monthBenefitBy(cardId){
 }
 
 /* ===================== 핵심: 카드별 혜택 계산 ===================== */
-function calcBenefit(card, category, amount, payType){
+function calcBenefit(card, category, amount, payType, merchant){
   const notes = [];
   let benefit = 0;
   let basis = "";
@@ -348,6 +411,56 @@ function calcBenefit(card, category, amount, payType){
 
   // 실적 충족 여부: 사용자가 직접 체크 (카드사는 '전월' 기준이라 이번 달 기록으로 자동판정이 불가)
   const perfOk = !card.minPerf || card.perfMet !== false;
+
+  // 0) 가맹점(브랜드) 지정 요율이 있으면 최우선 적용
+  const mFlat = (merchant && card.merchantFlats) ? card.merchantFlats[merchant] : undefined;
+  if(mFlat !== undefined){
+    const unit = amount >= (card.flatMin||10000) ? mFlat : (card.flatSmall||0);
+    let b = unit;
+    if(card.monthCap>0){
+      const used = monthBenefitBy(card.id);
+      const left = Math.max(0, card.monthCap - used);
+      if(b > left){ notes.push(`월 한도 ${fmt(card.monthCap)}원 중 ${fmt(left)}원 남았습니다`); b = left; }
+    }
+    if(card.minPerf && !perfOk){
+      notes.push(`전월실적 ${fmt(card.minPerf)}원 미달로 표시돼 있습니다`);
+      return { benefit:0, basis:`${merchant} 정액 캐시백`, notes, perfShort:true, wouldBe:b };
+    }
+    if(amount >= 100000) notes.push("정액 캐시백이라 금액이 커져도 늘지 않습니다");
+    return { benefit:b, basis:`${merchant} 정액 캐시백 ${fmt(unit)}원`, notes };
+  }
+
+  const mRate = (merchant && card.merchantRates) ? card.merchantRates[merchant] : undefined;
+  if(mRate !== undefined){
+    if(mRate === 0){
+      benefit = 0;
+      basis = `${merchant}은(는) 이 카드의 혜택 대상이 아닙니다`;
+    } else {
+      benefit = amount * mRate/100;
+      basis = `${merchant} ${mRate}%`;
+    }
+    const mCap = (card.merchantCaps && card.merchantCaps[merchant]) || 0;
+    if(mCap>0 && benefit>mCap){
+      notes.push(`건당 한도 ${fmt(mCap)}원에 걸립니다 (한도가 없었다면 ${fmt(benefit)}원)`);
+      benefit = mCap;
+    }
+    if(card.monthCap>0){
+      const used = monthBenefitBy(card.id);
+      const left = Math.max(0, card.monthCap - used);
+      if(benefit > left){
+        notes.push(`월 한도 ${fmt(card.monthCap)}원 중 ${fmt(left)}원 남았습니다`);
+        benefit = left;
+      }
+    }
+    if(card.minPerf && !perfOk){
+      notes.push(`전월실적 ${fmt(card.minPerf)}원 미달로 표시돼 있습니다 (카드 탭에서 변경하실 수 있습니다)`);
+      return { benefit:0, basis, notes, perfShort:true, wouldBe:benefit };
+    }
+    if(card.merchantNotes && card.merchantNotes[merchant]){
+      notes.push(card.merchantNotes[merchant]);
+    }
+    return { benefit, basis, notes };
+  }
 
   // 1) 전 가맹점 구간형 (라스베가스)
   if(card.globalTier){
@@ -417,6 +530,7 @@ let lastReco = null;
 
 function runReco(){
   const category = document.getElementById('rcCategory').value;
+  const merchant = document.getElementById('rcMerchant').value;
   const amount = Number(document.getElementById('rcAmount').value);
   const memo = document.getElementById('rcMemo').value.trim();
   const box = document.getElementById('recoResult');
@@ -424,7 +538,7 @@ function runReco(){
 
   const results = [];
   cards.forEach(c=>{
-    const r = calcBenefit(c, category, amount, payType);
+    const r = calcBenefit(c, category, amount, payType, merchant);
     if(r) results.push({card:c, ...r});
   });
   results.sort((a,b)=> b.benefit - a.benefit);
@@ -432,7 +546,7 @@ function runReco(){
   if(!results.length){ box.innerHTML='<div class="card"><div class="empty">계산할 카드가 없습니다</div></div>'; return; }
 
   const win = results[0];
-  lastReco = {category, amount, memo, cardId:win.card.id, benefit:win.benefit};
+  lastReco = {category, amount, memo, merchant, cardId:win.card.id, benefit:win.benefit};
 
   let html = `
     <div class="winner">
@@ -492,7 +606,7 @@ function logLastReco(){
     date: new Date().toISOString().slice(0,10),
     cardId: lastReco.cardId,
     category: lastReco.category,
-    merchant: lastReco.memo || lastReco.category,
+    merchant: lastReco.memo || lastReco.merchant || lastReco.category,
     amount: lastReco.amount,
     benefit: lastReco.benefit
   });
@@ -695,7 +809,7 @@ document.getElementById('btnManualAdd').addEventListener('click',()=>{
   const memo = document.getElementById('mlMemo').value.trim();
   if(!date || !amount || amount<=0){ showToast('날짜와 금액을 입력해 주세요'); return; }
   const c = cardById(cardId);
-  const r = c ? calcBenefit(c, category, amount, 'lump') : null;
+  const r = c ? calcBenefit(c, category, amount, 'lump', '') : null;
   txs.push({
     id: Date.now()+Math.random(),
     date, cardId, category,
@@ -790,6 +904,17 @@ function showToast(msg){
 /* 시작 */
 document.getElementById('rcCategory').innerHTML =
   CATEGORIES.map(c=>`<option value="${c}">${deco(c)}</option>`).join('');
+
+function refreshMerchantSelect(){
+  const cat = document.getElementById('rcCategory').value;
+  const list = MERCHANTS[cat] || [];
+  const sel = document.getElementById('rcMerchant');
+  sel.innerHTML = `<option value="">전체 / 해당 없음</option>` +
+    list.map(m=>`<option value="${m}">${m}</option>`).join('');
+  sel.parentElement.querySelector('label[for]') ;
+}
+document.getElementById('rcCategory').addEventListener('change', refreshMerchantSelect);
+refreshMerchantSelect();
 document.getElementById('mlCategory').innerHTML =
   CATEGORIES.map(c=>`<option value="${c}">${deco(c)}</option>`).join('');
 document.getElementById('mlDate').valueAsDate = new Date();
